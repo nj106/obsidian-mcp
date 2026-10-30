@@ -1,0 +1,20 @@
+services:
+  obsidian-mcp:
+    image: ghcr.io/nj106/obsidian-mcp:latest
+    container_name: obsidian-mcp
+    restart: unless-stopped
+    environment:
+      MCP_TOKEN: ${MCP_TOKEN}
+    ports:
+      # Bound to the server's Tailscale IP only: reachable from the
+      # tailnet, not from the public internet.
+      - "100.85.84.67:8096:8080"
+    volumes:
+      - livesync_vault:/vault
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+volumes:
+  livesync_vault:
+    external: true
+    name: livesync_vault
