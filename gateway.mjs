@@ -58,7 +58,7 @@ const CORS_HEADERS = {
 
 const server = http.createServer((req, res) => {
   if (req.url === '/mcp/') req.url = '/mcp';
-  console.log(`[req] ${req.method} ${req.url} auth=${authKind(req)} origin=${req.headers.origin || '-'} ua=${(req.headers['user-agent'] || '-').slice(0, 90)}`);
+  console.log(`[req] ${req.method} ${req.url} auth=${authKind(req)} authlen=${(req.headers['authorization'] || '').length} origin=${req.headers.origin || '-'} ua=${(req.headers['user-agent'] || '-').slice(0, 90)}`);
   if (req.method === 'OPTIONS') {
     res.writeHead(204, CORS_HEADERS);
     res.end();
