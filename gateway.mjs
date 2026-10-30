@@ -33,9 +33,12 @@ function tokenOk(req) {
 }
 
 const server = http.createServer((req, res) => {
-  if (req.url === '/healthz') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('ok');
+  if (req.url === '/' || req.url === '/healthz') {
+    // Landing and health probe. Generic API-key connection checks
+    // often probe the host root, so answer 200 here. This reveals
+    // nothing sensitive and never touches the vault.
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ ok: true, service: 'obsidian-mcp', mcp: '/mcp' }));
     return;
   }
   if (!req.url.startsWith('/mcp')) {
@@ -46,6 +49,14 @@ const server = http.createServer((req, res) => {
   if (!tokenOk(req)) {
     res.writeHead(401, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'unauthorized' }));
+    return;
+  }
+  if (req.method === 'GET') {
+    // Stateless gateway: there is no SSE stream to open on GET.
+    // Answer capability probes with a small descriptor instead of
+    // supergateway's 405. MCP clients use POST, which is proxied.
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, transport: 'streamable-http', methods: ['POST'] }));
     return;
   }
   const upstream = http.request(
