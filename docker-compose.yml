@@ -7,9 +7,11 @@ services:
     environment:
       MCP_TOKEN: ${MCP_TOKEN}
     ports:
-      # Bound to the server's Tailscale IP only: reachable from the
-      # tailnet, not from the public internet.
+      # Two doors onto the same gateway (which enforces the bearer
+      # token): the server's Tailscale IP for tailnet agents, and
+      # loopback for the Caddy public HTTPS entry.
       - "100.85.84.67:8096:8080"
+      - "127.0.0.1:8096:8080"
     volumes:
       - livesync_vault:/vault
     labels:
