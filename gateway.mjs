@@ -28,8 +28,22 @@ child.on('exit', (code) => {
 
 function tokenOk(req) {
   const given = Buffer.from(req.headers['authorization'] || '');
-  const expected = Buffer.from('Bearer ' + TOKEN);
-  return given.length === expected.length && crypto.timingSafeEqual(given, expected);
+  // Accept the standard "Bearer <token>" form, and also the bare
+  // token, which some generic API-key clients send as the whole
+  // Authorization value. Both still require the full secret.
+  return [Buffer.from('Bearer ' + TOKEN), Buffer.from(TOKEN)].some(
+    (expected) => given.length === expected.length && crypto.timingSafeEqual(given, expected),
+  );
+}
+
+// Diagnostic classification of the Authorization header. Never logs
+// the value itself, only its shape and whether it matched.
+function authKind(req) {
+  const auth = req.headers['authorization'] || '';
+  if (!auth) return 'none';
+  if (auth === 'Bearer ' + TOKEN) return 'bearer-ok';
+  if (auth === TOKEN) return 'raw-ok';
+  return auth.startsWith('Bearer ') ? 'bearer-bad' : 'other-bad';
 }
 
 // Browser-based clients and connection-check pages call this gateway
@@ -43,6 +57,8 @@ const CORS_HEADERS = {
 };
 
 const server = http.createServer((req, res) => {
+  if (req.url === '/mcp/') req.url = '/mcp';
+  console.log(`[req] ${req.method} ${req.url} auth=${authKind(req)} origin=${req.headers.origin || '-'} ua=${(req.headers['user-agent'] || '-').slice(0, 90)}`);
   if (req.method === 'OPTIONS') {
     res.writeHead(204, CORS_HEADERS);
     res.end();
@@ -75,7 +91,18 @@ const server = http.createServer((req, res) => {
     return;
   }
   const upstream = http.request(
-    { host: '127.0.0.1', port: INNER_PORT, path: req.url, method: req.method, headers: req.headers },
+    {
+      host: '127.0.0.1',
+      port: INNER_PORT,
+      path: req.url,
+      method: req.method,
+      headers: {
+        ...req.headers,
+        // Some minimal MCP probes omit Accept, which supergateway
+        // would reject with 406. Default to the MCP media types.
+        accept: req.headers.accept || 'application/json, text/event-stream',
+      },
+    },
     (up) => {
       res.writeHead(up.statusCode, { ...up.headers, 'Access-Control-Allow-Origin': '*' });
       up.pipe(res);
