@@ -2,6 +2,7 @@ services:
   obsidian-mcp:
     image: ghcr.io/nj106/obsidian-mcp:latest
     container_name: obsidian-mcp
+    network_mode: bridge
     restart: unless-stopped
     environment:
       MCP_TOKEN: ${MCP_TOKEN}
